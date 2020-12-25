@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dupat.demofaceverificationsecurity
+package com.dupat.faceferification
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
@@ -34,6 +34,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.text.TextUtils
+import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.LayoutInflater
@@ -41,6 +42,7 @@ import android.view.Surface
 import android.view.TextureView.SurfaceTextureListener
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.widget.Toast
 import com.dupat.faceferification.R
 import com.dupat.faceferification.facerecognition.customview.AutoFitTextureView
@@ -49,6 +51,7 @@ import com.dupat.faceferification.facerecognition.env.Logger
 import java.util.*
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
+
 
 @SuppressLint("ValidFragment")
 class CameraConnectionFragment private constructor(
@@ -129,11 +132,13 @@ class CameraConnectionFragment private constructor(
                 return desiredSize
             }
 
+            Log.d("TAG", "lololo: ")
             // Pick the smallest of those, assuming we found any
             return if (bigEnough.size > 0) {
                 val chosenSize =
                     Collections.min(bigEnough, CompareSizesByArea() as Comparator<in Size?>)
                 LOGGER.i("Chosen size: " + chosenSize!!.width + "x" + chosenSize.height)
+                Log.d("Tods", "Chosen")
                 chosenSize
             } else {
                 LOGGER.e("Couldn't find any suitable preview size")
@@ -291,6 +296,7 @@ class CameraConnectionFragment private constructor(
         view: View,
         savedInstanceState: Bundle?
     ) {
+        Log.d("Kontol!!", "onViewCreated: ")
         textureView = view.findViewById<View>(R.id.texture) as AutoFitTextureView
         overlayView = view.findViewById<View>(R.id.tracking_overlay) as OverlayView
     }
@@ -327,6 +333,7 @@ class CameraConnectionFragment private constructor(
     /** Sets up member variables related to camera.  */
     private fun setUpCameraOutputs() {
         val activity = activity
+        Log.d("Konci 1", "setUpCameraOutputs: ")
         val manager =
             activity.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         try {
@@ -353,6 +360,16 @@ class CameraConnectionFragment private constructor(
                 textureView!!.setAspectRatio(previewSize!!.height, previewSize!!.width)
                 overlayView!!.setAspectRatio(previewSize!!.height, previewSize!!.width)
             }
+
+            Log.d("Konci", "Konci: ")
+            textureView!!.viewTreeObserver.addOnGlobalLayoutListener(object :
+                OnGlobalLayoutListener {
+                override fun onGlobalLayout() {
+                    textureView!!.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                    Log.d("Size", "ukuran gan: ${textureView !!. height}")
+                }
+            })
+
         } catch (e: CameraAccessException) {
             LOGGER.e(e, "Exception!")
         } catch (e: NullPointerException) {
@@ -365,8 +382,8 @@ class CameraConnectionFragment private constructor(
         cameraConnectionCallback.onPreviewSizeChosen(previewSize!!, sensorOrientation!!)
     }
 
-    /** Opens the camera specified by [com.dupat.demofaceverificationsecurity.CameraConnectionFragment.cameraId].  */
     private fun openCamera(width: Int, height: Int) {
+        Log.d("Konci 2", "openCamera: ")
         setUpCameraOutputs()
         configureTransform(width, height)
         val activity = activity

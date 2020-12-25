@@ -18,6 +18,7 @@ import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.os.Trace
+import android.util.Log
 import android.util.Pair
 import com.dupat.faceferification.facerecognition.env.Logger
 import com.dupat.faceferification.facerecognition.tflite.SimilarityClassifier.Recognition
@@ -56,6 +57,7 @@ class TFLiteObjectDetectionAPIModel private constructor() : SimilarityClassifier
 
     override fun register(name: String?, rec: Recognition?) {
         registered[name] = rec
+        Log.d("Reg", "register gan")
     }
 
     private fun findNearest(emb: FloatArray): Pair<String?, Float>? {

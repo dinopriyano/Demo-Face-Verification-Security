@@ -102,17 +102,18 @@ class MultiBoxTracker(context: Context) {
             val cornerSize =
                 Math.min(trackedPos.width(), trackedPos.height()) / 8.0f
             canvas.drawRoundRect(trackedPos, cornerSize, cornerSize, boxPaint)
-            @SuppressLint("DefaultLocale") val strConfidence =
+            val strConfidence =
                 if (recognition.detectionConfidence < 0) "" else String.format(
                     "%.2f",
                     recognition.detectionConfidence
                 ) + ""
+            val strPercen = if(strConfidence != ""){(strConfidence.replace(",",".").toFloat() * 100).toInt().toString()+"%"} else ""
             val labelString =
                 if (!TextUtils.isEmpty(recognition.title)) String.format(
                     "%s %s",
                     recognition.title,
-                    strConfidence
-                ) else strConfidence
+                    strPercen
+                ) else strPercen
             borderedText.drawText(
                 canvas, trackedPos.left + cornerSize, trackedPos.top, labelString, boxPaint
             )

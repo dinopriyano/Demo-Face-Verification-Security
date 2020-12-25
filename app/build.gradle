@@ -103,4 +103,7 @@ dependencies {
     implementation "androidx.room:room-ktx:2.2.5"
     kapt 'androidx.room:room-compiler:2.2.5'
 
+    //progress bar
+    implementation 'com.akexorcist:round-corner-progress-bar:2.1.1'
+
 }

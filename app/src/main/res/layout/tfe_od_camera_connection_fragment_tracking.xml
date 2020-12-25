@@ -5,12 +5,12 @@
 
     <com.dupat.faceferification.facerecognition.customview.AutoFitTextureView
         android:id="@+id/texture"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
     <com.dupat.faceferification.facerecognition.customview.OverlayView
         android:id="@+id/tracking_overlay"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
 </FrameLayout>

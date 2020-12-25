@@ -1,37 +1,16 @@
-/*
- * Copyright 2019 The TensorFlow Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package com.dupat.demofaceverificationsecurity
+package com.dupat.faceferification
 
-import android.app.AlertDialog
-import android.content.DialogInterface
 import android.graphics.*
 import android.hardware.camera2.CameraCharacteristics
 import android.media.ImageReader.OnImageAvailableListener
 import android.os.Bundle
-import android.os.Handler
 import android.os.SystemClock
+import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import android.util.TypedValue
 import android.view.View
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
-import com.dupat.faceferification.R
 import com.dupat.faceferification.facerecognition.customview.OverlayView
 import com.dupat.faceferification.facerecognition.customview.OverlayView.DrawCallback
 import com.dupat.faceferification.facerecognition.env.BorderedText
@@ -42,7 +21,9 @@ import com.dupat.faceferification.facerecognition.tflite.SimilarityClassifier.Re
 import com.dupat.faceferification.facerecognition.tflite.TFLiteObjectDetectionAPIModel
 import com.dupat.faceferification.facerecognition.tracking.MultiBoxTracker
 import com.dupat.faceferification.utils.Function.byteArrayToBitmap
-import com.dupat.faceferification.utils.toast
+import com.dupat.faceferification.utils.Function.resizedBitmap
+import com.dupat.faceferification.utils.snackbar
+import com.dupat.faceferification.viewmodel.state.ViewState
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.mlkit.vision.common.InputImage
@@ -50,13 +31,11 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
-import java.io.IOException
+import kotlinx.android.synthetic.main.tfe_od_activity_camera.*
+import kotlinx.android.synthetic.main.tfe_od_camera_connection_fragment_tracking.*
+import kotlinx.android.synthetic.main.tfe_od_layout_bottom_sheet.*
 import java.util.*
 
-/**
- * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
- * objects.
- */
 open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
     var trackingOverlay: OverlayView? = null
     private var sensorOrientation: Int? = null
@@ -91,10 +70,17 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
     private var bmpUser: Bitmap? = null
     private var nameUser: String? = null
     private var isResume: Boolean = false
+    private var bmpOriginal: Bitmap? = null
+    private var numValidDetect: Int = 0
+    private var numCountValid: Int = 0
 
     //private HashMap<String, Classifier.Recognition> knownFaces = new HashMap<>();
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        handleUIState()
+        handleProgressValidFace()
+
         fabAdd = findViewById(R.id.fab_add)
         fabAdd.setOnClickListener(View.OnClickListener { onAddClick() })
 
@@ -111,13 +97,44 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
         //checkWritePermission();
     }
 
-    private fun onAddClick() {
-        addPending = true
-        //Toast.makeText(this, "click", Toast.LENGTH_LONG ).show();
+    private fun handleProgressValidFace() {
+        viewModel.getNumValid().observe(this, androidx.lifecycle.Observer {
+            val progress = it * 4
+            progressData.progress = progress.toFloat()
+        })
     }
 
-    private fun firstTackFace(){
-        if(bmpUser == null){
+    private fun handleUIState() {
+        viewModel.getState().observer(this, androidx.lifecycle.Observer {
+            when (it) {
+                is ViewState.IsLoading -> {
+                    containerCamera.snackbar("Loading...")
+                }
+                is ViewState.Error -> {
+                    containerCamera.snackbar(it.err!!)
+                }
+                is ViewState.IsSuccess -> {
+                    when (it.what) {
+                        1 -> {
+                            firstTackFace()
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    private fun saveDataSet() {
+        Log.d("Save", "saveDataSet gan")
+        viewModel.insertDataSet()
+    }
+
+    private fun onAddClick() {
+        addPending = true
+    }
+
+    private fun firstTackFace() {
+        if (bmpUser == null) {
             viewModel.getDatSet().observe(this, androidx.lifecycle.Observer {
 //                toast(th.size.toString())
                 val data = it[0]
@@ -125,11 +142,10 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
                 nameUser = data.imageName
                 firstTackFace()
             })
-        }
-        else{
+        } else {
 
             isResume = true
-//            addPending = true
+            addPending = true
 
             val image = InputImage.fromBitmap(bmpUser!!, 0)
             faceDetector!!
@@ -141,11 +157,9 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
                     }
                     runInBackground(
                         Runnable {
-                            toast("track")
-
-                            onFacesDetected(timestamp, faces, true)
+                            onFacesDetected(timestamp, faces, addPending)
 //                            portraitBmp = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888)
-                            isResume = false
+//                            isResume = false
                             addPending = false
                         })
                 })
@@ -155,6 +169,23 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
     }
 
     public override fun onPreviewSizeChosen(size: Size?, rotation: Int) {
+        if (isFirstLogin) {
+            if (intent.hasExtra("isFirst")) {
+                bmpOriginal = MediaStore.Images.Media.getBitmap(
+                    contentResolver,
+                    intent.getParcelableExtra("bmpUri")
+                )
+                if (bmpOriginal!!.height > (size!!.height / 2)) {
+                    bmpOriginal = resizedBitmap(bmpOriginal!!, (size.height / 2))
+                }
+                viewModel.bmpImage = bmpOriginal
+                viewModel.imageUrl = "https://google.com"
+                viewModel.securityName = intent.getStringExtra("securityName")
+                saveDataSet()
+            }
+            isFirstLogin = false
+        }
+
         val textSizePx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             TEXT_SIZE_DIP,
@@ -181,6 +212,7 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
             toast.show()
             finish()
         }
+
         previewWidth = size!!.width
         previewHeight = size.height
         sensorOrientation = rotation - screenOrientation
@@ -283,8 +315,10 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
                 }
                 runInBackground(
                     Runnable {
-                        onFacesDetected(currTimestamp, faces, addPending)
-                        addPending = false
+                        if(!isResume){
+                            onFacesDetected(currTimestamp, faces, addPending)
+                            addPending = false
+                        }
                     })
             })
     }
@@ -309,7 +343,13 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
     }
 
     // Face Processing
-    private fun createTransform(srcWidth: Int, srcHeight: Int, dstWidth: Int, dstHeight: Int, applyRotation: Int): Matrix {
+    private fun createTransform(
+        srcWidth: Int,
+        srcHeight: Int,
+        dstWidth: Int,
+        dstHeight: Int,
+        applyRotation: Int
+    ): Matrix {
         val matrix = Matrix()
         if (applyRotation != 0) {
             if (applyRotation % 90 != 0) {
@@ -337,30 +377,32 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
     }
 
     private fun showAddFaceDialog(rec: Recognition) {
-        val builder = AlertDialog.Builder(this)
-        val inflater = layoutInflater
-        val dialogLayout = inflater.inflate(R.layout.image_edit_dialog, null)
-        val ivFace =
-            dialogLayout.findViewById<ImageView>(R.id.dlg_image)
-        val tvTitle = dialogLayout.findViewById<TextView>(R.id.dlg_title)
-        val etName = dialogLayout.findViewById<EditText>(R.id.dlg_input)
-        tvTitle.text = "Add Face"
-
-        Log.d("Kontci", "${rec.crop?.width} ${rec.crop?.height}")
-
-        ivFace.setImageBitmap(rec.crop)
-        etName.hint = "Input name"
-        builder.setPositiveButton("OK", DialogInterface.OnClickListener { dlg, i ->
-            val name = etName.text.toString()
-            if (name.isEmpty()) {
-                return@OnClickListener
-            }
-            detector!!.register(name, rec)
-            //knownFaces.put(name, rec);
-            dlg.dismiss()
-        })
-        builder.setView(dialogLayout)
-        builder.show()
+//        val builder = AlertDialog.Builder(this)
+//        val inflater = layoutInflater
+//        val dialogLayout = inflater.inflate(R.layout.image_edit_dialog, null)
+//        val ivFace =
+//            dialogLayout.findViewById<ImageView>(R.id.dlg_image)
+//        val tvTitle = dialogLayout.findViewById<TextView>(R.id.dlg_title)
+//        val etName = dialogLayout.findViewById<EditText>(R.id.dlg_input)
+//        tvTitle.text = "Add Face"
+//
+//        Log.d("Kontci", "${rec.crop?.width} ${rec.crop?.height}")
+//
+//        ivFace.setImageBitmap(rec.crop)
+//        etName.hint = "Input name"
+//        builder.setPositiveButton("OK", DialogInterface.OnClickListener { dlg, i ->
+//            val name = etName.text.toString()
+//            if (name.isEmpty()) {
+//                return@OnClickListener
+//            }
+//            detector!!.register(name, rec)
+//            //knownFaces.put(name, rec);
+//            dlg.dismiss()
+//        })
+//        builder.setView(dialogLayout)
+//        builder.show()
+        Log.d("Adding", "Adding face: ${rec.title}")
+        detector!!.register(nameUser, rec)
     }
 
     private fun updateResults(currTimestamp: Long, mappedRecognitions: List<Recognition>) {
@@ -378,15 +420,18 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
         runOnUiThread {
             showFrameInfo("$previewWidth x $previewHeight")
             showCropInfo(
-                croppedBitmap!!.width.toString() + "x" + croppedBitmap!!.height
+                croppedBitmap!!.width.toString() + " x " + croppedBitmap!!.height
             )
-            showInference(lastProcessingTimeMs.toString() + "ms")
+            showInference(lastProcessingTimeMs.toString() + " ms")
         }
     }
 
     override fun onResume() {
         super.onResume()
-        firstTackFace()
+        numCountValid = 0
+        if (!isFirstLogin) {
+            firstTackFace()
+        }
     }
 
     private fun onFacesDetected(currTimestamp: Long, faces: List<Face>, add: Boolean) {
@@ -424,6 +469,9 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
         cv.drawBitmap(rgbFrameBitmap!!, transform, null)
         val cvFace = Canvas(faceBmp!!)
         val saved = false
+        if (faces.isEmpty() || faces.size > 1) {
+            numCountValid = 0
+        }
         for (face in faces) {
             LOGGER.i("FACE $face")
             LOGGER.i("Running detection on face $currTimestamp")
@@ -458,16 +506,15 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
                 var extra: Any? = null
                 var crop: Bitmap? = null
                 if (add) {
-                    if(isResume){
+                    if (isResume) {
                         crop = Bitmap.createBitmap(
                             bmpUser!!,
-                            faceBB.left.toInt()/2,
-                            faceBB.top.toInt()/2,
-                            faceBB.width().toInt()/2,
-                            faceBB.height().toInt()/2
+                            faceBB.left.toInt() / 2,
+                            faceBB.top.toInt() / 2,
+                            faceBB.width().toInt() / 2,
+                            faceBB.height().toInt() / 2
                         )
-                    }
-                    else{
+                    } else {
                         crop = Bitmap.createBitmap(
                             portraitBmp!!,
                             faceBB.left.toInt(),
@@ -478,8 +525,16 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
                     }
                 }
                 val startTime = SystemClock.uptimeMillis()
-                val resultsAux =
-                    detector!!.recognizeImage(if(add){Bitmap.createScaledBitmap(crop!!,TF_OD_API_INPUT_SIZE,TF_OD_API_INPUT_SIZE,false)} else faceBmp, add)
+                val resultsAux = detector.recognizeImage(
+                    if (add) {
+                        Bitmap.createScaledBitmap(
+                            crop!!,
+                            TF_OD_API_INPUT_SIZE,
+                            TF_OD_API_INPUT_SIZE,
+                            false
+                        )
+                    } else faceBmp, add
+                )
                 lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
                 if (resultsAux!!.isNotEmpty()) {
                     val result = resultsAux[0]
@@ -524,6 +579,18 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
                 result.extra = extra
                 result.crop = crop
                 mappedRecognitions.add(result)
+
+                if (result.title == nameUser) {
+                    numCountValid++
+                } else {
+                    numCountValid = 0
+                }
+
+                if (numCountValid in (numValidDetect + 1)..25) {
+                    numValidDetect = numCountValid
+                    viewModel.addProgress(numValidDetect)
+//                    toast(progress.toString())
+                }
             }
         }
 
@@ -531,6 +598,8 @@ open class DetectorActivity : CameraActivity(), OnImageAvailableListener {
 //      lastSaved = System.currentTimeMillis();
 //    }
         updateResults(currTimestamp, mappedRecognitions)
+        if(isResume)
+            isResume = false
     }
 
     companion object {

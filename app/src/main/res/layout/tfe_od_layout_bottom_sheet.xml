@@ -27,6 +27,18 @@
             android:layout_gravity="center"
             android:src="@drawable/icn_chevron_up" />
 
+        <com.akexorcist.roundcornerprogressbar.RoundCornerProgressBar
+            android:id="@+id/progressData"
+            android:layout_width="match_parent"
+            android:layout_marginTop="8dp"
+            app:rcMax="100"
+            android:layout_height="8dp"
+            app:rcBackgroundPadding="2dp"
+            app:rcAnimationSpeedScale="3"
+            app:rcAnimationEnable="true"
+            app:rcBackgroundColor="#0A000000"
+            app:rcProgressColor="@color/purple_700" />
+
     </LinearLayout>
 
     <LinearLayout
@@ -39,7 +51,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="Frame"
+            android:text="Frame Size"
             android:textColor="@android:color/black" />
 
         <TextView
@@ -62,7 +74,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="Crop"
+            android:text="Crop Size"
             android:textColor="@android:color/black" />
 
         <TextView

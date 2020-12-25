@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dupat.demofaceverificationsecurity
+package com.dupat.faceferification
 
 import android.Manifest
 import android.app.Fragment
@@ -29,6 +29,7 @@ import android.media.Image.Plane
 import android.media.ImageReader
 import android.media.ImageReader.OnImageAvailableListener
 import android.os.*
+import android.util.Log
 import android.util.Size
 import android.view.Surface
 import android.view.View
@@ -40,7 +41,6 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.widget.Toolbar
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
-import com.dupat.faceferification.R
 import com.dupat.faceferification.databinding.TfeOdActivityCameraBinding
 import com.dupat.faceferification.db.SecurityDatabase
 import com.dupat.faceferification.facerecognition.env.ImageUtils
@@ -82,6 +82,7 @@ abstract class CameraActivity : AppCompatActivity(), OnImageAvailableListener,
 
     protected lateinit var binding: TfeOdActivityCameraBinding
     protected lateinit var viewModel: DataSetSecurityViewModel
+    protected var isFirstLogin: Boolean = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         LOGGER.d("onCreate $this")
@@ -90,7 +91,7 @@ abstract class CameraActivity : AppCompatActivity(), OnImageAvailableListener,
         //useFacing = intent.getIntExtra(KEY_USE_FACING, CameraCharacteristics.LENS_FACING_FRONT);
         cameraFacing = intent.getIntExtra(
             KEY_USE_FACING,
-            CameraCharacteristics.LENS_FACING_FRONT
+            CameraCharacteristics.LENS_FACING_BACK
         )
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         binding = DataBindingUtil.setContentView(this, R.layout.tfe_od_activity_camera)
@@ -102,6 +103,7 @@ abstract class CameraActivity : AppCompatActivity(), OnImageAvailableListener,
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar!!.setDisplayShowTitleEnabled(false)
+        supportActionBar!!.setDisplayHomeAsUpEnabled(true)
         if (hasPermission()) {
             setFragment()
         } else {
@@ -308,7 +310,6 @@ abstract class CameraActivity : AppCompatActivity(), OnImageAvailableListener,
     @Synchronized
     public override fun onResume() {
         LOGGER.d("onResume $this")
-        Toast.makeText(this,"Resume",Toast.LENGTH_LONG).show()
         super.onResume()
         handlerThread = HandlerThread("inference")
         handlerThread!!.start()
@@ -379,6 +380,7 @@ abstract class CameraActivity : AppCompatActivity(), OnImageAvailableListener,
                 )
                     .show()
             }
+
             requestPermissions(
                 arrayOf(PERMISSION_CAMERA),
                 PERMISSIONS_REQUEST
@@ -440,6 +442,7 @@ abstract class CameraActivity : AppCompatActivity(), OnImageAvailableListener,
         cameraId = chooseCamera()
         val fragment: Fragment
         if (useCamera2API) {
+            Log.d("Babi", "setFragment: ")
             val camera2Fragment = CameraConnectionFragment.newInstance(
                 object : CameraConnectionFragment.ConnectionCallback {
                     override fun onPreviewSizeChosen(size: Size, cameraRotation: Int) {

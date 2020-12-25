@@ -17,10 +17,13 @@
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.FaceFerification">
-        <activity android:name="com.dupat.demofaceverificationsecurity.DetectorActivity">
+        <activity android:name="com.dupat.faceferification.DetectorActivity"
+            android:parentActivityName=".MainActivity"
+            android:screenOrientation="portrait">
 
         </activity>
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

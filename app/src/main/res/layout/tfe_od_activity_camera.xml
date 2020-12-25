@@ -7,6 +7,7 @@
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/containerCamera"
         xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
@@ -59,7 +60,7 @@
             android:tint="@android:color/white"
             android:layout_margin="16dp"
             android:backgroundTint="@color/purple_700"
-
+            android:visibility="gone"
             app:layout_anchor="@id/bottom_sheet_layout"
             app:layout_anchorGravity="top|end"
             />

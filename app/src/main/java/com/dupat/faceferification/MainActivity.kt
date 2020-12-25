@@ -17,12 +17,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.dupat.demofaceverificationsecurity.DetectorActivity
 import com.dupat.faceferification.databinding.ActivityMainBinding
 import com.dupat.faceferification.db.SecurityDatabase
 import com.dupat.faceferification.repositories.SecurityDatabaseRepository
 import com.dupat.faceferification.utils.Function
 import com.dupat.faceferification.utils.Function.byteArrayToBitmap
+import com.dupat.faceferification.utils.Function.resizedBitmap
 import com.dupat.faceferification.utils.snackbar
 import com.dupat.faceferification.viewmodel.DataSetSecurityViewModel
 import com.dupat.faceferification.viewmodel.factory.DataSetSecurityViewModelFactory
@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: DataSetSecurityViewModel
+    private lateinit var uriBmp: Uri
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,14 +127,19 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {
                 is ViewState.IsSuccess -> {
                     when(it.what){
                         0 -> {
-                            viewModel.securityName = etUsername.text.toString()
-                            viewModel.imageUrl = "https://google.com"
-                            viewModel.insertDataSet()
+//                            viewModel.securityName = etUsername.text.toString()
+//                            viewModel.imageUrl = "https://google.com"
+//                            viewModel.insertDataSet()
+                            val intent = Intent(this,DetectorActivity::class.java)
+                            intent.putExtra("isFirst","")
+                            intent.putExtra("bmpUri",uriBmp)
+                            intent.putExtra("securityName",etUsername.text.toString())
+                            startActivity(intent)
                         }
 
                         1 -> {
 //                            containerMain.snackbar("Success insert data")
-                            startActivity(Intent(this,DetectorActivity::class.java))
+//                            startActivity(Intent(this,DetectorActivity::class.java))
                         }
 
                         2 -> {
@@ -152,8 +158,12 @@ class MainActivity : AppCompatActivity(),View.OnClickListener {
             if (requestCode == 10 && resultCode == RESULT_OK) {
                 if (data?.data != null) {
                     val mImageUri: Uri = data.data!!
+                    uriBmp = mImageUri
                     val realPath: String = getRealpath(mImageUri)
                     val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, mImageUri)
+//                    if(bitmap.height > 320){
+//                        bitmap = resizedBitmap(bitmap,320)
+//                    }
                     ivPerson.setImageBitmap(bitmap)
                     viewModel.bmpImage = bitmap
                     viewModel.validateImage()

@@ -10,6 +10,7 @@ import com.dupat.faceferification.db.entity.DataSetSecurity
 import com.dupat.faceferification.repositories.SecurityDatabaseRepository
 import com.dupat.faceferification.utils.Corountines
 import com.dupat.faceferification.utils.Function.bitmapToByteArray
+import com.dupat.faceferification.utils.Function.resizedBitmap
 import com.dupat.faceferification.utils.SingleLiveEvent
 import com.dupat.faceferification.viewmodel.state.ViewState
 import com.google.android.gms.tasks.OnSuccessListener
@@ -27,39 +28,51 @@ class DataSetSecurityViewModel(val repository: SecurityDatabaseRepository): View
     var securityName: String? = null
     var imageUrl: String? = null
     private var dataSet = repository.dataSetSecurity
+    private var numValidDetect = MutableLiveData<Int>()
 
     fun validateImage(){
         state.value = ViewState.IsLoading(true)
-        val options = FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-            .setContourMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
-            .build()
-        val detector = FaceDetection.getClient(options)
-        val faceDetector: FaceDetector = detector
 
-        val inputImage = InputImage.fromBitmap(bmpImage!!, 0)
-        faceDetector
-            .process(inputImage)
-            .addOnSuccessListener(OnSuccessListener { faces ->
-                if (faces.size == 0) {
-                    state.value = ViewState.IsLoading(false)
-                    state.value = ViewState.Error("Face not found")
-                    Log.d("TAG", "Face not found")
-                    return@OnSuccessListener
-                }
-                else if(faces.size > 1){
-                    state.value = ViewState.IsLoading(false)
-                    state.value = ViewState.Error("Face more than one")
-                    Log.d("TAG", "Face more than one")
-                    return@OnSuccessListener
-                }
-                else {
-                    state.value = ViewState.IsLoading(false)
-                    state.value = ViewState.IsSuccess(0)
-                    Log.d("TAG", "Face count: " + faces.size)
-                }
-            })
+        if(bmpImage!!.height < bmpImage!!.width){
+            state.value = ViewState.IsLoading(false)
+            state.value = ViewState.Error("Image height must be more than width")
+        }
+        else{
+            val options = FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                .setContourMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+                .build()
+            val detector = FaceDetection.getClient(options)
+            val faceDetector: FaceDetector = detector
+
+            val inputImage = InputImage.fromBitmap(bmpImage!!, 0)
+            faceDetector
+                .process(inputImage)
+                .addOnSuccessListener(OnSuccessListener { faces ->
+                    if (faces.size == 0) {
+                        state.value = ViewState.IsLoading(false)
+                        state.value = ViewState.Error("Face not found")
+                        Log.d("TAG", "Face not found")
+                        return@OnSuccessListener
+                    }
+                    else if(faces.size > 1){
+                        state.value = ViewState.IsLoading(false)
+                        state.value = ViewState.Error("Face more than one")
+                        Log.d("TAG", "Face more than one")
+                        return@OnSuccessListener
+                    }
+                    else {
+                        state.value = ViewState.IsLoading(false)
+                        state.value = ViewState.IsSuccess(0)
+                        Log.d("TAG", "Face count: " + faces.size)
+                    }
+                })
+        }
+    }
+
+    fun addProgress(num: Int){
+        numValidDetect.postValue(num)
     }
 
     fun insertDataSet(){
@@ -86,4 +99,5 @@ class DataSetSecurityViewModel(val repository: SecurityDatabaseRepository): View
 
     fun getDatSet() = dataSet
     fun getState() = state
+    fun getNumValid() = numValidDetect
 }

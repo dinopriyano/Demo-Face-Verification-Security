@@ -1,4 +1,4 @@
-package com.dupat.demofaceverificationsecurity
+package com.dupat.faceferification
 
 import android.annotation.SuppressLint
 import android.app.Fragment
@@ -8,6 +8,7 @@ import android.hardware.Camera.CameraInfo
 import android.hardware.Camera.PreviewCallback
 import android.os.Bundle
 import android.os.HandlerThread
+import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.LayoutInflater
@@ -15,11 +16,12 @@ import android.view.Surface
 import android.view.TextureView.SurfaceTextureListener
 import android.view.View
 import android.view.ViewGroup
-import com.dupat.demofaceverificationsecurity.CameraConnectionFragment
+import com.dupat.faceferification.CameraConnectionFragment
 import com.dupat.faceferification.R
 import com.dupat.faceferification.facerecognition.customview.AutoFitTextureView
 import com.dupat.faceferification.facerecognition.env.ImageUtils
 import com.dupat.faceferification.facerecognition.env.Logger
+import kotlinx.android.synthetic.main.tfe_od_camera_connection_fragment_tracking.*
 import java.io.IOException
 
 /*
@@ -101,9 +103,11 @@ class LegacyCameraConnectionFragment(
                 for (size in cameraSizes) {
                     sizes[i++] = Size(size.width, size.height)
                 }
+                Log.d("Konc", "Size: ${desiredSize.height} x ${desiredSize.width}")
                 val previewSize = CameraConnectionFragment.chooseOptimalSize(
                     sizes, desiredSize.width, desiredSize.height
                 )
+//                tracking_overlay.setAspectRatio(desiredSize.width,desiredSize.height)
                 parameters.setPreviewSize(previewSize!!.width, previewSize.height)
                 camera.setDisplayOrientation(90)
                 camera.setParameters(parameters)
@@ -122,6 +126,7 @@ class LegacyCameraConnectionFragment(
                 )
             )
             textureView!!.setAspectRatio(s.height, s.width)
+            tracking_overlay.setAspectRatio(s.height, s.width)
             camera.startPreview()
         }
 
@@ -139,16 +144,16 @@ class LegacyCameraConnectionFragment(
 
     /** An additional thread for running tasks that shouldn't block the UI.  */
     private var backgroundThread: HandlerThread? = null
-    override fun setArguments(args: Bundle) {
+    override fun setArguments(args: Bundle?) {
         super.setArguments(args)
-        facing = args.getInt(
+        facing = args!!.getInt(
             KEY_FACING,
             CameraInfo.CAMERA_FACING_FRONT
         )
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(layout, container, false)
     }
